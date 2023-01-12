@@ -1,15 +1,15 @@
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-    "contentVersion": "1.1.0.0",
+    "contentVersion": "1.0.0.0",
     "parameters": {
+        "administratorLogin": {
+            "type": "string"
+        },      
+        "administratorLoginPassword": {
+            "type": "secureString"
+        },
         "administrators": {
             "type": "object"
-        },
-        "appFunctionName": {
-            "type": "string"
-        },
-        "hostingPlanName": {
-            "type": "string"
         },
         "enabledForDeployment": {
             "type": "bool",
@@ -60,13 +60,7 @@
         "skuNameSqlServer": {
             "type": "string"
         },
-        "skuNameHostingPlan": {
-            "type": "string"
-        },
         "skuNameStorageAccount": {
-            "type": "string"
-        },
-        "skuTierHostingPlan": {
             "type": "string"
         },
         "skuTierSqlServer": {
@@ -100,26 +94,10 @@
             "type": "string"
         },
         "virtualSubNetworkPrefix": {
+            "type": "string" 
+        },
+        "sqlServerVnetRuleName": {
             "type": "string"
-        },
-        "indexDocumentPath": {
-            "type": "string",
-            "defaultValue": "index.html"
-        },
-        "namePrivateDnsZone": {
-            "type": "string"
-        },
-        "privateEndpointNameSQL": {
-            "type": "string"
-        },
-        "privateEndpointNameKeyvault": {
-            "type": "string"
-        },
-        "targetSubResourceSQL": {
-            "type": "Array"
-        },
-        "targetSubResourceKeyvault": {
-            "type": "Array"
         }
     },
     "functions": [],
@@ -137,100 +115,46 @@
                 "subnets": [
                     {
                         "name": "[parameters('virtualSubNetworkName')]",
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]",
                         "properties": {
-                            "addressPrefix": "[parameters('virtualSubNetworkPrefix')]",
-                            "serviceEndpoints": [
-                                {
-                                    "service": "Microsoft.Sql",
-                                    "locations": [
-                                        "[parameters('location')]"
-                                    ]
-                                },
-                                {
-                                    "service": "Microsoft.KeyVault",
-                                    "locations": [
-                                        "[parameters('location')]"
-                                    ]
-                                }
-                            ],
-                            "privateEndpointNetworkPolicies": "Disabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
+                            "addressPrefix": "[parameters('virtualSubNetworkPrefix')]"
                         }
                     }
                 ]
             }
         },
         {
-            "type": "Microsoft.Network/privateDnsZones",
-            "apiVersion": "2018-09-01",
-            "name": "[parameters('namePrivateDnsZone')]",
-            "location": "global",
-            "dependsOn": [],
-            "tags": {},
-            "properties": {}
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2022-09-01",
+            "name": "[parameters('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('skuNameStorageAccount')]",
+                "tier": "[parameters('skuTierStorageAccount')]"
+            },
+            "kind": "StorageV2"
         },
         {
-            "type": "Microsoft.Network/privateDnsZones/A",
-            "apiVersion": "2018-09-01",
-            "name": "[concat(parameters('namePrivateDnsZone'), '/keyvault')]",
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2022-09-01",
+            "name": "[concat(parameters('storageAccountName'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
-            ],
-            "properties": {
-                "ttl": 3600,
-                "aRecords": [
-                    {
-                        "ipv4Address": "192.168.0.5"
-                    }
-                ]
-            }
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ]
         },
         {
-            "type": "Microsoft.Network/privateDnsZones/A",
-            "apiVersion": "2018-09-01",
-            "name": "[concat(parameters('namePrivateDnsZone'), '/sqlserver')]",
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2022-09-01",
+            "name": "[concat(parameters('storageAccountName'), '/default/$web')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
-            ],
-            "properties": {
-                "ttl": 3600,
-                "aRecords": [
-                    {
-                        "ipv4Address": "192.168.0.4"
-                    }
-                ]
-            }
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ]
         },
-        {
-            "type": "Microsoft.Network/privateDnsZones/SOA",
-            "apiVersion": "2018-09-01",
-            "name": "[concat(parameters('namePrivateDnsZone'), '/@')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
-            ],
-            "properties": {
-                "ttl": 3600,
-                "soaRecord": {
-                    "email": "azureprivatedns-host.microsoft.com",
-                    "expireTime": 2419200,
-                    "host": "azureprivatedns.net",
-                    "minimumTtl": 10,
-                    "refreshTime": 3600,
-                    "retryTime": 300,
-                    "serialNumber": 1
-                }
-            }
-        },
-
         {
             "type": "Microsoft.KeyVault/vaults",
             "apiVersion": "2022-07-01",
             "name": "[parameters('keyVaultName')]",
             "location": "[parameters('location')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]"
-            ],
             "properties": {
                 "enabledForDeployment": "[parameters('enabledForDeployment')]",
                 "enabledForDiskEncryption": "[parameters('enabledForDiskEncryption')]",
@@ -251,109 +175,38 @@
                     "family": "A"
                 },
                 "networkAcls": {
-                    "defaultAction": "Deny",
-                    "bypass": "None",
-                    "virtualNetworkRules": []
-                },
-                "publicNetworkAccess": "Disabled"
-            }
-        },
-        {
-            "type": "Microsoft.Storage/storageAccounts",
-            "apiVersion": "2022-09-01",
-            "name": "[parameters('storageAccountName')]",
-            "location": "[parameters('location')]",
-            "sku": {
-                "name": "[parameters('skuNameStorageAccount')]",
-                "tier": "[parameters('skuTierStorageAccount')]"
-            },
-            "kind": "StorageV2"
-        },
-
-        {
-            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-            "apiVersion": "2018-11-30",
-            "name": "DeploymentScript",
-            "location": "[parameters('location')]"
-        },
-
-
-
-        {
-            "type": "Microsoft.Authorization/roleAssignments",
-            "apiVersion": "2020-04-01-preview",
-            "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
-            "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab'))]",
-            "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')).principalId]",
-                "principalType": "ServicePrincipal"
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
-            ]
-        },
-
-        {
-            "type": "Microsoft.Resources/deploymentScripts",
-            "apiVersion": "2020-10-01",
-            "name": "deploymentScript",
-            "location": "[parameters('location')]",
-            "kind": "AzureCLI",
-            "identity": {
-                "type": "UserAssigned",
-                "userAssignedIdentities": {
-                    "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'))]": {}
+                    "defaultAction": "Allow",
+                    "bypass": "AzureServices",
+                    "ipRules": [
+                        {
+                            "value": "[parameters('virtualSubNetworkPrefix')]"
+                        }
+                    ],
+                    "virtualNetworkRules": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]"
+                        }
+                    ]
                 }
-            },
-            "properties": {
-                "azCliVersion": "2.9.1",
-                "scriptContent": "
-                    az account set $SubId\n
-                    az storage blob service-properties update --account-name $StorageAccountName --static-website --index-document $IndexDocumentPath
-                ",
-                "retentionInterval": "PT4H",
-                "environmentVariables": [
-                    {
-                        "name": "ResourceGroupName",
-                        "value": "[resourceGroup().name]"
-                    },
-                    {
-                        "name": "StorageAccountName",
-                        "value": "[parameters('storageAccountName')]"
-                    },
-                    {
-                        "name": "IndexDocumentPath",
-                        "value": "[parameters('indexDocumentPath')]"
-                    },
-                    {
-                        "name": "SubId",
-                        "value": "[subscription().subscriptionId]"
-                    }
-                ]
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')]",
-                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
-            ]
+            }
         },
         {
             "type": "Microsoft.Sql/servers",
             "apiVersion": "2022-05-01-preview",
             "name": "[parameters('sqlServerName')]",
             "location": "[parameters('location')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]"
-            ],
             "properties": {
+                "administratorLogin": "[parameters('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
                 "minimalTlsVersion": "[parameters('minimaltlsversion')]",
                 "version": "12.0",
-                "administrators": "[parameters('administrators')]",
-                "publicNetworkAccess": "Disabled",
-                "restrictOutboundNetworkAccess": "Disabled"
+                "administrators": "[parameters('administrators')]"
             }
+        },
+        {
+            "type": "Microsoft.Sql/servers/virtualNetworkRules",
+            "apiVersion": "2022-05-01-preview",
+            "name": "[parameters('sqlServerVnetRuleName')]"
         },
         {
             "type": "Microsoft.Sql/servers/databases",
@@ -367,132 +220,7 @@
             "dependsOn": [
                 "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
             ]
-        },
-        {
-            "apiVersion": "2022-03-01",
-            "name": "[parameters('appFunctionName')]",
-            "type": "Microsoft.Web/sites",
-            "kind": "functionapp",
-            "location": "[parameters('location')]",
-            "tags": {},
-            "dependsOn": [
-                "[concat('Microsoft.Web/serverfarms/', parameters('hostingPlanName'))]",
-                "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]"
-            ],
-            "properties": {
-                "siteConfig": {
-                    // https://learn.microsoft.com/en-us/azure/azure-functions/functions-app-settings#functions_worker_runtime
-                    "appSettings": [
-                        {
-                            "name": "FUNCTIONS_EXTENSION_VERSION",
-                            "value": "~4"
-                        },
-                        {
-                            "name": "FUNCTIONS_WORKER_RUNTIME",
-                            "value": "dotnet"
-                        },
-                        {
-                            "name": "AzureWebJobsStorage",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value,';EndpointSuffix=','core.windows.net')]"
-                        },
-                        {
-                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value,';EndpointSuffix=','core.windows.net')]"
-                        },
-                        {
-                            "name": "WEBSITE_CONTENTSHARE",
-                            "value": "[concat(toLower(parameters('appFunctionName')), 'b237')]"
-                        }
-                    ]
-                },
-                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
-                "clientAffinityEnabled": false
-            }
-        },
-        {
-            "apiVersion": "2022-03-01",
-            "name": "[parameters('hostingPlanName')]",
-            "type": "Microsoft.Web/serverfarms",
-            "location": "[parameters('location')]",
-            "sku": {
-                "Tier": "[parameters('skuTierHostingPlan')]",
-                "Name": "[parameters('skuNameHostingPlan')]"
-            }
-        },
-        {
-            "type": "Microsoft.Network/privateEndpoints",
-            "apiVersion": "2022-07-01",
-            "name": "[parameters('privateEndpointNameSQL')]",
-            "location": "[parameters('location')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]",
-                "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
-            ],
-            "tags": {},
-            "properties": {
-                "subnet": {
-                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]"
-                },
-                "ipConfigurations": [
-                    {
-                        "name": "sqlserverIP",
-                        "properties": {
-                            "groupId": "sqlServer",
-                            "memberName": "sqlServer",
-                            "privateIPAddress": "192.168.0.4"
-                        }
-                    }
-                ],
-                "customNetworkInterfaceName": "[concat(parameters('privateEndpointNameSQL'),'-nic')]",
-                "privateLinkServiceConnections": [
-                    {
-                        "name": "[parameters('privateEndpointNameSQL')]",
-                        "properties": {
-                            "privateLinkServiceId": "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]",
-                            "groupIds": "[parameters('targetSubResourceSQL')]"
-                        }
-                    }
-                ]
-            }
-        },
-
-        {
-            "type": "Microsoft.Network/privateEndpoints",
-            "apiVersion": "2022-07-01",
-            "name": "[parameters('privateEndpointNameKeyvault')]",
-            "location": "[parameters('location')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]",
-                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
-            ],
-            "tags": {},
-            "properties": {
-                "subnet": {
-                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]"
-                },
-                "ipConfigurations": [
-                    {
-                        "name": "keyVaultIP",
-                        "properties": {
-                            "groupId": "vault",
-                            "memberName": "default",
-                            "privateIPAddress": "192.168.0.5"
-                        }
-                    }
-                ],
-                "customNetworkInterfaceName": "[concat(parameters('privateEndpointNameKeyvault'),'-nic')]",
-                "privateLinkServiceConnections": [
-                    {
-                        "name": "[parameters('privateEndpointNameKeyvault')]",
-                        "properties": {
-                            "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
-                            "groupIds": "[parameters('targetSubResourceKeyvault')]"
-                        }
-                    }
-                ]
-            }
         }
-
     ],
     "outputs": {}
 }

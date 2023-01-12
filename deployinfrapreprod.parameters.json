@@ -1,0 +1,106 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.1.0.0",
+  "parameters": {
+    "administrators": {
+      "value": {
+        "administratorType": "ActiveDirectory",
+        "azureADOnlyAuthentication": true,
+        "login": "axel.maucolot@diiage.org",
+        "principalType": "User",
+        "sid": "efe210b8-6d7c-4e0a-a2ff-e4b6b7cf2904",
+        "tenantId": "14bc5219-40ca-4d62-a8e4-7c97c1236349"
+      }
+    },
+    "appFunctionName": {
+      "value": "appfunctiond2p2g4preprod"
+    },
+    "hostingPlanName": {
+      "value": "aspd2p2g4preprod"
+    },
+    "keyVaultName": {
+      "value": "keyvaultd2p2g4preprod"
+    },
+    "appInsightsName": {
+      "value": "ApplicationInsightsD2P2G4PreProd"
+    },
+    "workSpaceName": {
+      "value": "LogAnalyticsWorkspaceD2P2G4PreProd"
+    },
+    "virtualNetworkName": {
+      "value": "VnetD2P2G4PreProd"
+    },
+    "virtualSubNetworkName": {
+      "value": "SubnetD2P2G4PreProd"
+    },
+    "namePrivateDnsZone": {
+      "value": "securityserver.net"
+    },
+    "privateEndpointNameKeyvault": {
+      "value": "keyVaultEndPoint"
+    },
+    "privateEndpointNameSQL": {
+      "value": "sqlServerEndPoint"
+    },
+    "sqlDBName": {
+      "value": "DatabaseD2P2G4PreProd"
+    },
+    "sqlServerName": {
+      "value": "SQLServerD2P2G4PreProd"
+    },
+    "storageAccountName": {
+      "value": "staticwebd2p2g4preprod"
+    },
+    "skuNameHostingPlan": {
+      "value": "Y1"
+    },
+    "skuNameKeyVault": {
+      "value": "standard"
+    },
+    "skuNameSqlServer": {
+      "value": "Basic"
+    },
+    "skuNameStorageAccount": {
+      "value": "Standard_ZRS"
+    },
+    "objectId": {
+      "value": "d3428241-944e-4537-adda-eddc3d610f0f"
+    },
+    "skuTierHostingPlan": {
+      "value": "Dynamic"
+    },
+    "skuTierSqlServer": {
+      "value": "Basic"
+    },
+    "skuTierStorageAccount": {
+      "value": "Standard"
+    },
+    "location": {
+      "value": "northeurope"
+    },
+    "targetSubResourceKeyvault": {
+      "value": [
+        "vault"
+      ]
+    },
+    "targetSubResourceSQL": {
+      "value": [
+        "sqlServer"
+      ]
+    },
+    "tenantId": {
+      "value": "14bc5219-40ca-4d62-a8e4-7c97c1236349"
+    },
+    "virtualNetworkPrefix": {
+      "value": [
+        "192.168.0.0/16"
+      ]
+    },
+    "virtualSubNetworkPrefix": {
+      "value": "192.168.0.0/24"
+    },
+    "workSpaceSku": {
+      "value": "pergb2018"
+    }
+  }
+}

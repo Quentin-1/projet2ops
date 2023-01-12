@@ -1,0 +1,538 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.1.0.0",
+    "parameters": {
+        "administrators": {
+            "type": "object"
+        },
+        "appFunctionName": {
+            "type": "string"
+        },
+        "hostingPlanName": {
+            "type": "string"
+        },
+        "enabledForDeployment": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "enabledForDiskEncryption": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "enabledForTemplateDeployment": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "keyVaultName": {
+            "type": "string"
+        },
+        "keysPermissions": {
+            "type": "array",
+            "defaultValue": [
+                "list"
+            ]
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]"
+        },
+        "minimalTlsVersion": {
+            "type": "string",
+            "defaultValue": "1.2"
+        },
+        "objectId": {
+            "type": "string"
+        },
+        "secretsPermissions": {
+            "type": "array",
+            "defaultValue": [
+                "list"
+            ]
+        },
+        "skuNameKeyVault": {
+            "type": "string",
+            "defaultValue": "standard",
+            "allowedValues": [
+                "standard",
+                "premium"
+            ]
+        },
+        "skuNameSqlServer": {
+            "type": "string"
+        },
+        "skuNameHostingPlan": {
+            "type": "string"
+        },
+        "skuNameStorageAccount": {
+            "type": "string"
+        },
+        "skuTierHostingPlan": {
+            "type": "string"
+        },
+        "skuTierSqlServer": {
+            "type": "string"
+        },
+        "skuTierStorageAccount": {
+            "type": "string"
+        },
+        "sqlDBName": {
+            "type": "string",
+            "defaultValue": "SampleDB"
+        },
+        "sqlServerName": {
+            "type": "string",
+            "defaultValue": "[uniqueString('sql', resourceGroup().id)]"
+        },
+        "storageAccountName": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string",
+            "defaultValue": "[subscription().tenantId]"
+        },
+        "virtualNetworkName": {
+            "type": "string"
+        },
+        "virtualNetworkPrefix": {
+            "type": "array"
+        },
+        "virtualSubNetworkName": {
+            "type": "string"
+        },
+        "virtualSubNetworkPrefix": {
+            "type": "string"
+        },
+        "indexDocumentPath": {
+            "type": "string",
+            "defaultValue": "index.html"
+        },
+        "namePrivateDnsZone": {
+            "type": "string"
+        },
+        "privateEndpointNameSQL": {
+            "type": "string"
+        },
+        "privateEndpointNameKeyvault": {
+            "type": "string"
+        },
+        "targetSubResourceSQL": {
+            "type": "Array"
+        },
+        "targetSubResourceKeyvault": {
+            "type": "Array"
+        },
+        "workSpaceName": {
+            "type": "string"
+        },
+        "workSpaceSku": {
+            "type": "string"
+        },
+        "appInsightsName": {
+            "type": "string"
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "[parameters('virtualNetworkName')]",
+            "type": "Microsoft.Network/VirtualNetworks",
+            "apiVersion": "2022-07-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": "[parameters('virtualNetworkPrefix')]"
+                },
+                "subnets": [
+                    {
+                        "name": "[parameters('virtualSubNetworkName')]",
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]",
+                        "properties": {
+                            "addressPrefix": "[parameters('virtualSubNetworkPrefix')]",
+                            "serviceEndpoints": [
+                                {
+                                    "service": "Microsoft.Sql",
+                                    "locations": [
+                                        "[parameters('location')]"
+                                    ]
+                                },
+                                {
+                                    "service": "Microsoft.KeyVault",
+                                    "locations": [
+                                        "[parameters('location')]"
+                                    ]
+                                }
+                            ],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[parameters('namePrivateDnsZone')]",
+            "location": "global",
+            "dependsOn": [],
+            "tags": {},
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/A",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('namePrivateDnsZone'), '/keyvault')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
+            ],
+            "properties": {
+                "ttl": 3600,
+                "aRecords": [
+                    {
+                        "ipv4Address": "192.168.0.5"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/A",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('namePrivateDnsZone'), '/sqlserver')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
+            ],
+            "properties": {
+                "ttl": 3600,
+                "aRecords": [
+                    {
+                        "ipv4Address": "192.168.0.4"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/SOA",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('namePrivateDnsZone'), '/@')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('namePrivateDnsZone'))]"
+            ],
+            "properties": {
+                "ttl": 3600,
+                "soaRecord": {
+                    "email": "azureprivatedns-host.microsoft.com",
+                    "expireTime": 2419200,
+                    "host": "azureprivatedns.net",
+                    "minimumTtl": 10,
+                    "refreshTime": 3600,
+                    "retryTime": 300,
+                    "serialNumber": 1
+                }
+            }
+        },
+
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2022-07-01",
+            "name": "[parameters('keyVaultName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "enabledForDeployment": "[parameters('enabledForDeployment')]",
+                "enabledForDiskEncryption": "[parameters('enabledForDiskEncryption')]",
+                "enabledForTemplateDeployment": "[parameters('enabledForTemplateDeployment')]",
+                "tenantId": "[parameters('tenantId')]",
+                "accessPolicies": [
+                    {
+                        "objectId": "[parameters('objectId')]",
+                        "tenantId": "[parameters('tenantId')]",
+                        "permissions": {
+                            "keys": "[parameters('keysPermissions')]",
+                            "secrets": "[parameters('secretsPermissions')]"
+                        }
+                    }
+                ],
+                "sku": {
+                    "name": "[parameters('skuNameKeyVault')]",
+                    "family": "A"
+                },
+                "networkAcls": {
+                    "defaultAction": "Deny",
+                    "bypass": "None",
+                    "virtualNetworkRules": []
+                },
+                "publicNetworkAccess": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2022-09-01",
+            "name": "[parameters('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('skuNameStorageAccount')]",
+                "tier": "[parameters('skuTierStorageAccount')]"
+            },
+            "kind": "StorageV2"
+        },
+
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "name": "DeploymentScript",
+            "location": "[parameters('location')]"
+        },
+
+
+
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2020-04-01-preview",
+            "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+            "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab'))]",
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')).principalId]",
+                "principalType": "ServicePrincipal"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ]
+        },
+
+        {
+            "type": "Microsoft.Resources/deploymentScripts",
+            "apiVersion": "2020-10-01",
+            "name": "deploymentScript",
+            "location": "[parameters('location')]",
+            "kind": "AzureCLI",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'))]": {}
+                }
+            },
+            "properties": {
+                "azCliVersion": "2.9.1",
+                "scriptContent": "
+                    az account set $SubId\n
+                    az storage blob service-properties update --account-name $StorageAccountName --static-website --index-document $IndexDocumentPath
+                ",
+                "retentionInterval": "PT4H",
+                "environmentVariables": [
+                    {
+                        "name": "ResourceGroupName",
+                        "value": "[resourceGroup().name]"
+                    },
+                    {
+                        "name": "StorageAccountName",
+                        "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                        "name": "IndexDocumentPath",
+                        "value": "[parameters('indexDocumentPath')]"
+                    },
+                    {
+                        "name": "SubId",
+                        "value": "[subscription().subscriptionId]"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript')]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'DeploymentScript'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Sql/servers",
+            "apiVersion": "2022-05-01-preview",
+            "name": "[parameters('sqlServerName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "minimalTlsVersion": "[parameters('minimaltlsversion')]",
+                "version": "12.0",
+                "administrators": "[parameters('administrators')]",
+                "publicNetworkAccess": "Disabled",
+                "restrictOutboundNetworkAccess": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases",
+            "apiVersion": "2022-05-01-preview",
+            "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('sqlDBName'))]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('skuNameSqlServer')]",
+                "tier": "[parameters('skuTierSqlServer')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+            ]
+        },
+        {
+            "apiVersion": "2022-03-01",
+            "name": "[parameters('appFunctionName')]",
+            "type": "Microsoft.Web/sites",
+            "kind": "functionapp",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "dependsOn": [
+                "[concat('Microsoft.Insights/components/', parameters('appInsightsName'))]",
+                "[concat('Microsoft.Web/serverfarms/', parameters('hostingPlanName'))]",
+                "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "siteConfig": {
+                    // https://learn.microsoft.com/en-us/azure/azure-functions/functions-app-settings#functions_worker_runtime
+                    "appSettings": [
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~4"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value,';EndpointSuffix=','core.windows.net')]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value,';EndpointSuffix=','core.windows.net')]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[concat(toLower(parameters('appFunctionName')), 'b237')]"
+                        },
+                        {
+                            "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                            "value": "[reference(concat('Microsoft.Insights/components/', parameters('appInsightsName')), '2020-02-02-preview').ConnectionString]"
+                        }
+                    ]
+                },
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
+                "clientAffinityEnabled": false
+            }
+        },
+        {
+            "apiVersion": "2022-03-01",
+            "name": "[parameters('hostingPlanName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "location": "[parameters('location')]",
+            "sku": {
+                "Tier": "[parameters('skuTierHostingPlan')]",
+                "Name": "[parameters('skuNameHostingPlan')]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2022-07-01",
+            "name": "[parameters('privateEndpointNameSQL')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+            ],
+            "tags": {},
+            "properties": {
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]"
+                },
+                "ipConfigurations": [
+                    {
+                        "name": "sqlserverIP",
+                        "properties": {
+                            "groupId": "sqlServer",
+                            "memberName": "sqlServer",
+                            "privateIPAddress": "192.168.0.4"
+                        }
+                    }
+                ],
+                "customNetworkInterfaceName": "[concat(parameters('privateEndpointNameSQL'),'-nic')]",
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointNameSQL')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]",
+                            "groupIds": "[parameters('targetSubResourceSQL')]"
+                        }
+                    }
+                ]
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2022-07-01",
+            "name": "[parameters('privateEndpointNameKeyvault')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/VirtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+            ],
+            "tags": {},
+            "properties": {
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('virtualSubNetworkName'))]"
+                },
+                "ipConfigurations": [
+                    {
+                        "name": "keyVaultIP",
+                        "properties": {
+                            "groupId": "vault",
+                            "memberName": "default",
+                            "privateIPAddress": "192.168.0.5"
+                        }
+                    }
+                ],
+                "customNetworkInterfaceName": "[concat(parameters('privateEndpointNameKeyvault'),'-nic')]",
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointNameKeyvault')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                            "groupIds": "[parameters('targetSubResourceKeyvault')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "2021-12-01-preview",
+            "name": "[parameters('workSpaceName')]",
+            "location": "[parameters('location')]",
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "properties": {
+                "sku": {
+                    "name": "[parameters('workSpaceSku')]"
+                }
+            }
+        },
+        {
+            "name": "[parameters('appInsightsName')]",
+            "type": "microsoft.insights/components",
+            "location": "[parameters('location')]",
+            "apiVersion": "2020-02-02-preview",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workSpaceName'))]"
+            ],
+            "properties": {
+                "ApplicationId": "[parameters('appInsightsName')]",
+                "Application_Type": "web",
+                "Flow_Type": "Bluefield",
+                "Request_Source": "rest",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workSpaceName'))]"
+            }
+        }        
+    ],
+    "outputs": {}
+}

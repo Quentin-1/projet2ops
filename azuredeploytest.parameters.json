@@ -1,43 +1,31 @@
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.1.0.0",
+    "contentVersion": "1.0.0.0",
     "parameters": {
+     "administratorLogin": {
+      "value": "pendule"
+     },
+     "administratorLoginPassword": {
+      "value": "Azerty@1234!"
+     },
       "administrators": {
         "value": {
           "administratorType": "ActiveDirectory",
           "azureADOnlyAuthentication": true,
-          "login": "2024.DI2.P2.G3.2@diiage.org",
+          "login": "quentin.rhighi@diiage.org",
           "principalType": "User",
-          "sid": "e6feea1f-686c-4173-a97e-fe6035d43e4f",
+          "sid": "6980d120-624b-4044-930a-1ef38961c769",
           "tenantId": "14bc5219-40ca-4d62-a8e4-7c97c1236349"
         }
       },
-      "appFunctionName": {
-        "value": "appfunctionsecuritycalg5test"
-      },
-      "hostingPlanName": {
-        "value": "ASPsecurityg5CALtest"
-      },
       "keyVaultName": {
-        "value": "keyvaultsecuritygcaltest"
+        "value": "KeyVaultSecurity11"
       },
       "location": {
         "value": "northeurope"
       },
-      "namePrivateDnsZone": {
-        "value": "2024D2P2G4.net"
-      },
       "objectId": {
-        "value": "576a2b33-dce6-40bb-bb56-5a8d044e5ffd"
-      },
-      "privateEndpointNameKeyvault": {
-        "value": "keyVaultEndPoint"
-      },
-      "privateEndpointNameSQL": {
-        "value": "sqlServerEndPoint"
-      },
-      "skuNameHostingPlan": {
-        "value": "Y1"
+        "value": "35aa7ed8-1573-4373-8d73-575625f165c2"
       },
       "skuNameKeyVault": {
         "value": "standard"
@@ -48,9 +36,6 @@
       "skuNameStorageAccount": {
         "value": "Standard_LRS"
       },
-      "skuTierHostingPlan": {
-        "value": "Dynamic"
-      },
       "skuTierSqlServer": {
         "value": "Basic"
       },
@@ -58,23 +43,13 @@
         "value": "Standard"
       },
       "sqlDBName": {
-        "value": "DBSecurityServerg5caltest"
+        "value": "DBSecurityServer"
       },
       "sqlServerName": {
-        "value": "ServerBDDSecurityg5caltest"
+        "value": "BDD-ServerSecurity"
       },
       "storageAccountName": {
-        "value": "securityserverg5test"
-      },
-      "targetSubResourceKeyvault": {
-        "value": [
-          "vault"
-        ]
-      },
-      "targetSubResourceSQL": {
-        "value": [
-          "sqlServer"
-        ]
+        "value": "securityserverweeb"
       },
       "tenantId": {
         "value": "14bc5219-40ca-4d62-a8e4-7c97c1236349"
@@ -92,6 +67,7 @@
       },
       "virtualSubNetworkPrefix": {
         "value": "192.168.0.0/24"
-      }
-    }
+      },
   }
+  
+  
